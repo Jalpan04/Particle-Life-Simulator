@@ -15,7 +15,7 @@
     #canvas-container {
       flex-grow: 1;
       position: relative;
-      width: calc(100% - 320px); /* Adjust for the sidebar width */
+      width: calc(100% - 320px);
     }
     canvas {
       width: 100%;
@@ -35,7 +35,7 @@
       box-sizing: border-box;
     }
     #toggle-btn {
-      display: none; /* Removed the toggle button since it's no longer necessary */
+      display: none;
     }
     .section {
       margin-bottom: 15px;
@@ -66,7 +66,6 @@
       padding: 2px;
       border-radius: 4px;
     }
-    /* Custom slider styles to support color gradients */
     input[type="range"].gradient-slider {
       -webkit-appearance: none;
       appearance: none;
@@ -91,6 +90,20 @@
       cursor: pointer;
       border: 1px solid #666;
     }
+    #reset-btn {
+      display: block;
+      margin: 20px auto 0;
+      padding: 10px 20px;
+      background: dodgerblue;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    #reset-btn:hover {
+      background: #666;
+    }
   </style>
 </head>
 <body>
@@ -104,7 +117,7 @@
   <script>
     const canvas = document.getElementById("canvas");
     const ctx = canvas.getContext("2d");
-    canvas.width = window.innerWidth - 320;  // Reduced the canvas size to fit the sidebar
+    canvas.width = window.innerWidth - 320;
     canvas.height = window.innerHeight;
 
     let numParticles = 1000;
@@ -120,7 +133,6 @@
       "red", "blue", "yellow", "green", "orange", "purple", "lime", "pink"
     ];
 
-    // Actual CSS color values for the sliders
     const groupCssColors = [
       "#ff0000", "#0000ff", "#ffff00", "#00ff00", "#ff8800", "#8800ff", "#00ff88", "#ff00ff"
     ];
@@ -333,13 +345,9 @@
           slider.value = rules[i][j];
           slider.className = "gradient-slider";
 
-          // Create a gradient based on the source and target colors
           const colorFrom = groupCssColors[i];
           const colorTo = groupCssColors[j];
-          slider.style.background =
-            i === j
-              ? colorFrom // If same group, use solid color
-              : `linear-gradient(to right, ${colorFrom}, ${colorTo})`; // Otherwise, use gradient
+          slider.style.background = i === j ? colorFrom : `linear-gradient(to right, ${colorFrom}, ${colorTo})`;
 
           const number = document.createElement("input");
           number.type = "number";
@@ -362,9 +370,20 @@
         }
       }
       gui.appendChild(ruleSection);
+
+      // Reset Button
+      const resetBtn = document.createElement("button");
+      resetBtn.id = "reset-btn";
+      resetBtn.textContent = "Reset";
+      resetBtn.onclick = () => {
+        initRulesAndColors();
+        initParticles();
+        buildGUI();
+      };
+      gui.appendChild(resetBtn);
     }
 
-    document.getElementById("gui").style.display = 'block'; // Make sure the sidebar is shown
+    document.getElementById("gui").style.display = 'block';
 
     initRulesAndColors();
     initParticles();
@@ -378,7 +397,7 @@
     });
 
     window.addEventListener('resize', () => {
-      canvas.width = window.innerWidth - 320; // Adjust for the sidebar width
+      canvas.width = window.innerWidth - 320;
       canvas.height = window.innerHeight;
     });
   </script>
