@@ -34,8 +34,19 @@
       overflow-y: auto;
       box-sizing: border-box;
     }
-    #toggle-btn {
-      display: none;
+    #reset-btn {
+      display: block;
+      margin: 20px auto 0;
+      padding: 10px 20px;
+      background: dodgerblue;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    #reset-btn:hover {
+      background: #666;
     }
     .section {
       margin-bottom: 15px;
@@ -90,29 +101,13 @@
       cursor: pointer;
       border: 1px solid #666;
     }
-    #reset-btn {
-      display: block;
-      margin: 20px auto 0;
-      padding: 10px 20px;
-      background: dodgerblue;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      font-size: 16px;
-      cursor: pointer;
-    }
-    #reset-btn:hover {
-      background: #666;
-    }
   </style>
 </head>
 <body>
   <div id="canvas-container">
     <canvas id="canvas"></canvas>
   </div>
-  <div id="gui">
-    <!-- Sidebar content will be injected here via JavaScript -->
-  </div>
+  <div id="gui"></div>
 
   <script>
     const canvas = document.getElementById("canvas");
@@ -128,16 +123,14 @@
     let groupColors = [];
     const particleRadius = 4;
     const springConstant = 0.1;
+    let repellingForce = [];
 
     const groupColorNames = [
       "red", "blue", "yellow", "green", "orange", "purple", "lime", "pink"
     ];
-
     const groupCssColors = [
       "#ff0000", "#0000ff", "#ffff00", "#00ff00", "#ff8800", "#8800ff", "#00ff88", "#ff00ff"
     ];
-
-    let repellingForce = [];
 
     function getRandomColor() {
       return '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
@@ -171,17 +164,14 @@
     function applyRepellingForce(clickX, clickY) {
       const forceDuration = 30;
       const maxRepelForce = 15;
-
       for (let i = 0; i < particles.length; i++) {
         const p = particles[i];
         const dx = p.x - clickX;
         const dy = p.y - clickY;
         const dist = Math.sqrt(dx * dx + dy * dy);
-
         if (dist < 400) {
           const repelStrength = maxRepelForce * (1 - dist / 400);
           const angle = Math.atan2(dy, dx);
-
           repellingForce[i] = {
             x: Math.cos(angle) * repelStrength,
             y: Math.sin(angle) * repelStrength,
@@ -195,48 +185,39 @@
       for (let i = 0; i < particles.length; i++) {
         const p1 = particles[i];
         let fx = 0, fy = 0;
-
         if (repellingForce[i] && repellingForce[i].duration > 0) {
           fx += repellingForce[i].x;
           fy += repellingForce[i].y;
           repellingForce[i].duration -= 1;
         }
-
         for (let j = 0; j < particles.length; j++) {
           if (i === j) continue;
           const p2 = particles[j];
           let dx = p2.x - p1.x;
           let dy = p2.y - p1.y;
           let dist = Math.sqrt(dx * dx + dy * dy);
-
           if (dist > 0 && dist < interactionRadius) {
             let force = rules[p1.group][p2.group];
             let springForce = (1 - dist / interactionRadius) * force * springConstant;
-
             fx += dx / dist * springForce;
             fy += dy / dist * springForce;
           }
-
           if (dist > 0 && dist < particleRadius * 2) {
             let overlap = particleRadius * 2 - dist;
             let pushX = (dx / dist) * (overlap / 2);
             let pushY = (dy / dist) * (overlap / 2);
-
             p1.x -= pushX * 0.2;
             p1.y -= pushY * 0.2;
             p2.x += pushX * 0.2;
             p2.y += pushY * 0.2;
           }
         }
-
         p1.vx = (p1.vx + fx * 0.05) * 0.85;
         p1.vy = (p1.vy + fy * 0.05) * 0.85;
       }
-
       for (let p of particles) {
         p.x += p.vx;
         p.y += p.vy;
-
         if (p.x < particleRadius) { p.x = particleRadius; p.vx *= -0.5; }
         if (p.x > canvas.width - particleRadius) { p.x = canvas.width - particleRadius; p.vx *= -0.5; }
         if (p.y < particleRadius) { p.y = particleRadius; p.vy *= -0.5; }
@@ -244,9 +225,34 @@
       }
     }
 
+    // Draw particles + connection lines
     function drawParticles() {
       ctx.fillStyle = "black";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Connection lines (same group, close distance)
+      const maxConnectionDistance = 100;
+      for (let i = 0; i < particles.length; i++) {
+        const p1 = particles[i];
+        for (let j = i + 1; j < particles.length; j++) {
+          const p2 = particles[j];
+          if (p1.group !== p2.group) continue;
+          const dx = p2.x - p1.x;
+          const dy = p2.y - p1.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < maxConnectionDistance) {
+            const opacity = 1 - dist / maxConnectionDistance;
+            ctx.strokeStyle = groupCssColors[p1.group] + Math.floor(opacity * 128).toString(16).padStart(2, "0");
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.stroke();
+          }
+        }
+      }
+
+      // Particles
       for (let p of particles) {
         ctx.beginPath();
         ctx.arc(p.x, p.y, particleRadius, 0, Math.PI * 2);
@@ -262,81 +268,60 @@
     }
 
     let ruleSliders = [];
-
     function buildGUI() {
       const gui = document.getElementById("gui");
       gui.innerHTML = '';
       ruleSliders = [];
-
       const section = document.createElement("div");
       section.className = "section";
       section.innerHTML = `<h3>Global Settings</h3>`;
-
       function dualControl(labelText, val, min, max, step, onInput) {
         const label = document.createElement("label");
         label.textContent = labelText;
-
         const container = document.createElement("div");
         container.className = "slider-input";
-
         const slider = document.createElement("input");
         slider.type = "range";
         slider.min = min;
         slider.max = max;
         slider.step = step;
         slider.value = val;
-
         const number = document.createElement("input");
         number.type = "number";
         number.min = min;
         number.max = max;
         number.step = step;
         number.value = val;
-
-        slider.oninput = () => {
-          number.value = slider.value;
-          onInput(parseFloat(slider.value));
-        };
-        number.oninput = () => {
-          slider.value = number.value;
-          onInput(parseFloat(number.value));
-        };
-
+        slider.oninput = () => { number.value = slider.value; onInput(parseFloat(slider.value)); };
+        number.oninput = () => { slider.value = number.value; onInput(parseFloat(number.value)); };
         container.appendChild(slider);
         container.appendChild(number);
         section.appendChild(label);
         section.appendChild(container);
       }
-
       dualControl("Particles", numParticles, 50, 1000, 10, val => {
         numParticles = val;
         initParticles();
       });
-
       dualControl("Groups", numGroups, 2, 8, 1, val => {
         numGroups = val;
         initRulesAndColors();
         initParticles();
         buildGUI();
       });
-
       dualControl("Radius", interactionRadius, 10, 300, 1, val => {
         interactionRadius = val;
       });
-
       gui.appendChild(section);
-
       const ruleSection = document.createElement("div");
       ruleSection.className = "section";
       ruleSection.innerHTML = `<h3>Rules</h3>`;
-
       for (let i = 0; i < numGroups; i++) {
         for (let j = 0; j < numGroups; j++) {
           const label = document.createElement("label");
           label.textContent = `${groupColorNames[i]} → ${groupColorNames[j]}`;
           const container = document.createElement("div");
           container.className = "slider-input";
-
           const slider = document.createElement("input");
           slider.type = "range";
           slider.min = -1;
@@ -344,34 +329,22 @@
           slider.step = 0.01;
           slider.value = rules[i][j];
           slider.className = "gradient-slider";
-
           const colorFrom = groupCssColors[i];
           const colorTo = groupCssColors[j];
           slider.style.background = i === j ? colorFrom : `linear-gradient(to right, ${colorFrom}, ${colorTo})`;
-
           const number = document.createElement("input");
           number.type = "number";
           number.min = -1;
           number.max = 1;
           number.step = 0.01;
           number.value = rules[i][j];
-
-          slider.oninput = () => {
-            number.value = slider.value;
-            rules[i][j] = parseFloat(slider.value);
-          };
-          number.oninput = () => {
-            slider.value = number.value;
-            rules[i][j] = parseFloat(number.value);
-          };
-
+          slider.oninput = () => { number.value = slider.value; rules[i][j] = parseFloat(slider.value); };
+          number.oninput = () => { slider.value = number.value; rules[i][j] = parseFloat(number.value); };
           container.append(slider, number);
           ruleSection.append(label, container);
         }
       }
       gui.appendChild(ruleSection);
-
-      // Reset Button
       const resetBtn = document.createElement("button");
       resetBtn.id = "reset-btn";
       resetBtn.textContent = "Reset";
@@ -384,16 +357,13 @@
     }
 
     document.getElementById("gui").style.display = 'block';
-
     initRulesAndColors();
     initParticles();
     buildGUI();
     loop();
 
     canvas.addEventListener("click", (e) => {
-      const clickX = e.clientX;
-      const clickY = e.clientY;
-      applyRepellingForce(clickX, clickY);
+      applyRepellingForce(e.clientX, e.clientY);
     });
 
     window.addEventListener('resize', () => {
